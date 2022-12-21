@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import './style.css';
 
 import DogImage from '../../components/DogImage';
@@ -6,20 +6,69 @@ import TodoForm from '../../components/TodoForm';
 import TodoItem from '../../components/TodoItem';
 
 const App = () => {
-  const [todos, setTodos] = useState([
-    {
-      id: 1,
-      title: 'お買い物',
-      detail: '歯磨き粉',
-      isCompleted: true,
+  const [todos, setTodos] = useReducer(
+    (state, action) => {
+      const { type, payload } = action;
+
+      switch (type) {
+        case 'add': {
+          return [
+            ...state,
+            {
+              id: payload.id,
+              title: payload.title,
+              detail: payload.detail,
+              isCompleted: false,
+            },
+          ];
+        }
+        case 'edit': {
+          const newState = state.map((todo) => {
+            if (todo.id === payload.id) {
+              todo.title = payload.title;
+              todo.detail = payload.detail;
+            }
+            return todo;
+          });
+          return newState;
+        }
+        case 'toggleCompleted': {
+          const newState = state.map((todo) => {
+            if (todo.id === payload.id) {
+              todo.isCompleted = !todo.isCompleted;
+            }
+            return todo;
+          });
+
+          return newState;
+        }
+        case 'delete': {
+          const newState = state.filter((todo) => {
+            return todo.id !== payload.id;
+          });
+
+          return newState;
+        }
+        default: {
+          return state;
+        }
+      }
     },
-    {
-      id: 2,
-      title: '掃除',
-      detail: 'リビング',
-      isCompleted: false,
-    },
-  ]);
+    [
+      {
+        id: 1,
+        title: 'お買い物',
+        detail: '歯磨き粉',
+        isCompleted: true,
+      },
+      {
+        id: 2,
+        title: '掃除',
+        detail: 'リビング',
+        isCompleted: false,
+      },
+    ]
+  );
   const [inputValues, setInputValues] = useState({
     id: null,
     title: '',
@@ -35,7 +84,7 @@ const App = () => {
 
       setDogImageSrc(data.message);
       setIsLoading(false);
-    }
+    };
     request();
   }, [todos]);
 
@@ -46,51 +95,46 @@ const App = () => {
       ...inputValues,
       [name]: value,
     });
-  }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (inputValues.id) {
-      const updateTodos = todos.map((todo) => {
-        if (todo.id === inputValues.id) {
-          todo.title = inputValues.title;
-          todo.detail = inputValues.detail;
-        }
-        return todo;
+      setTodos({
+        type: 'edit',
+        payload: {
+          id: inputValues.id,
+          title: inputValues.title,
+          detail: inputValues.detail,
+        },
       });
-      setTodos(updateTodos);
-      setInputValues({
-        id: null,
-        title: '',
-        detail: '',
+    } else {
+      const nextId = todos.length ? todos[todos.length - 1].id + 1 : 1;
+      setTodos({
+        type: 'add',
+        payload: {
+          id: nextId,
+          title: inputValues.title,
+          detail: inputValues.detail,
+        },
       });
-      return;
     }
-    const nextId = todos.length
-      ? todos[todos.length - 1].id + 1
-      : 1;
-    setTodos([...todos, {
-      id: nextId,
-      title: inputValues.title,
-      detail: inputValues.detail,
-      isCompleted: false,
-    }]);
+
     setInputValues({
       id: null,
       title: '',
       detail: '',
-    })
-  }
+    });
+  };
 
   const handleCompleted = (id) => {
-    const updateTodos = todos.map((todo) => {
-      if (todo.id === id) {
-        todo.isCompleted = !todo.isCompleted;
-      }
-      return todo;
+    setTodos({
+      type: 'toggleCompleted',
+      payload: {
+        id,
+      },
     });
-    setTodos(updateTodos);
-  }
+  };
 
   const handleClickEditButton = (todo) => {
     setInputValues({
@@ -98,24 +142,16 @@ const App = () => {
       title: todo.title,
       detail: todo.detail,
     });
-  }
+  };
 
   const handleClickDeleteButton = (id) => {
-    const updateTodos = todos.filter((todo) => {
-      return todo.id !== id;
-    });
-
-    setTodos(updateTodos);
-  }
+    setTodos({ type: 'delete', payload: { id } });
+  };
 
   return (
     <div>
-      <h1 className="title">TODO LIST</h1>
-      {
-        isLoading
-          ? (<p>Loading...</p>)
-          : <DogImage dogImageSrc={dogImageSrc} />
-      }
+      <h1 className='title'>TODO LIST</h1>
+      {isLoading ? <p>Loading...</p> : <DogImage dogImageSrc={dogImageSrc} />}
       <TodoForm
         handleSubmit={handleSubmit}
         inputValues={inputValues}
@@ -131,11 +167,11 @@ const App = () => {
               handleClickEditButton={handleClickEditButton}
               handleClickDeleteButton={handleClickDeleteButton}
             />
-          )
+          );
         })}
       </ul>
     </div>
   );
-}
+};
 
 export default App;
